@@ -130,7 +130,7 @@ def currencyTypeX(row, col, sheet):
         val = 'RUR'
     elif '\xa3' in fmt_str:
         val = 'GBP'
-    elif chr(8364) in fmt_str:
+    elif 'EUR' in fmt_str:
         val = 'EUR'
     elif (fmt_str.find('USD') >= 0) or (fmt_str.find('[$$') >= 0):
         val = 'USD'

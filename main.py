@@ -9,7 +9,7 @@ import time
 import shutil
 import openpyxl                       # Для .xlsx
 #import xlrd                          # для .xls
-from   price_tools import getCellXlsx, getCell, nameToId, currencyTypeX, sheetByName
+from   price_tools import getCellXlsx, getCell, nameToId, currencyTypeX, openX
 import csv
 import urllib.request
 
@@ -56,15 +56,15 @@ def getXlsxString(sh, i, in_columns_j):
 
 def convert_excel2csv(cfg):
     priceFName= cfg.get('basic','filename_in')
-    sheetName = cfg.get('basic','sheetname')
-
 
     log.debug('Reading file ' + priceFName )
-    book, sheet = sheetByName(fileName = priceFName, sheetName = sheetName)
+    book = openX(fileName = priceFName)
+    sheet = book.worksheets[0]
+    #book, sheet = sheetByName(fileName = priceFName, sheetName = sheetName)
     if not sheet:
         log.error("Нет листа "+sheetName+" в файле "+ priceFName)
         return False
-    log.debug("Sheet   "+sheetName)
+    log.debug("Sheet  [0]")
     out_cols = cfg.options("cols_out")
     in_cols  = cfg.options("cols_in")
     out_template = {}
@@ -145,21 +145,14 @@ def convert_excel2csv(cfg):
             #impValues = getXlsString(sheet, i, in_cols_j)                # xls
             #print( impValues )
             ccc1 = sheet.cell(row=i, column=in_cols_j['цена1']).value
+            if impValues['артикул'] == 'Артикул' :
+                continue
 
-            if sheetName in ('VS', 'CO', 'PAVA'):
-                if (sheet.cell(row=i, column=in_cols_j['подгруппа']).font.b is True and
-                    sheet.cell(row=i, column=in_cols_j['цена1']).value is None):          # подгруппа
-                    subgrp = impValues['подгруппа']
-                    continue
-                elif (impValues['код_'] == '' or
-                    impValues['код_'] == 'SAP' or
-                    impValues['цена1'] == '0'):                                           # лишняя строка
-                    continue
-                impValues['подгруппа'] = subgrp
-                impValues['описание'] = impValues['описание'].encode('cp1251', errors='replace').decode('cp1251')
-
-            else:
-                log.error('нераспознан sheetName "%s"', sheetName)      # далее общая для всех обработка
+            if impValues['группа_'] == '' : impValues['группа_'] = grp
+            else : grp = impValues['группа_']
+            if impValues['подгруппа'] == '' : impValues['подгруппа'] = subgrp
+            else : subgrp = impValues['подгруппа']
+            impValues['описание'] = impValues['описание'].encode('cp1251', errors='replace').decode('cp1251')
 
             for outColName in out_template.keys() :
                 shablon = out_template[outColName]
@@ -173,18 +166,18 @@ def convert_excel2csv(cfg):
                     shablon = str(round(vvv1 * vvv2, 2))
                 recOut[outColName] = shablon.strip()
 
-            recOut['код'] = nameToId(recOut['код'])
+            #recOut['код'] = nameToId(recOut['код'])
             if  recOut['продажа'] == '0.1':
                 recOut['валюта'] = 'USD'
                 recOut['закупка'] = '0.1'
-            if recOut['валюта'] == 'RUR':
+            if recOut['валюта'] == 'RUR' or recOut['валюта'] == '':
                 csvWriterRUR.writerow(recOut)
             elif recOut['валюта'] == 'USD':
                 csvWriterUSD.writerow(recOut)
             elif recOut['валюта'] == 'EUR':
                 csvWriterEUR.writerow(recOut)
             else:
-                log.error('нераспознана валюта "%s" для товара "%s"', recOut['валюта'], recOut['код производителя'])
+                log.error('нераспознана валюта "%s" для товара "%s"', recOut['валюта'], recOut['артикул'])
 
         except Exception as e:
             print(e)
